@@ -85,6 +85,7 @@ function setQuestionUI(type) {
     feedback.textContent = ""; feedback.className = "";
     explanationBox.classList.add("hidden"); submitBtn.disabled = false;
     userAnswer.disabled = false; userAnswer.value = "";
+    if (typeof clearWhiteboard === "function") clearWhiteboard(); // fresh scratch pad for each new question
     if (type === "mcq") {
         userAnswer.classList.add("hidden"); optionsBox.classList.remove("hidden");
     } else {
@@ -348,6 +349,135 @@ function checkAnswer() {
         explanationBox.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 }
+
+// --- Scratch pad / whiteboard -------------------------------------------
+// A simple canvas kids can use for working out math problems or jotting
+// notes on an ELA passage. Supports mouse, touch, and stylus via Pointer
+// Events, with a few pen colors and an eraser. It clears automatically when
+// a new question loads, so scratch work never lingers in the wrong context.
+var whiteboardToggleBtn = document.getElementById("whiteboardToggleBtn");
+var whiteboardPanel = document.getElementById("whiteboardPanel");
+var whiteboardCanvas = document.getElementById("whiteboardCanvas");
+var wbEraserBtn = document.getElementById("wbEraserBtn");
+var wbClearBtn = document.getElementById("wbClearBtn");
+var wbColorButtons = document.querySelectorAll(".wb-color");
+var wbCtx = whiteboardCanvas ? whiteboardCanvas.getContext("2d") : null;
+var wbDrawing = false;
+var wbLastX = 0, wbLastY = 0;
+var wbColor = "#1e3a8a";
+var wbErasing = false;
+var wbSized = false;
+
+function sizeWhiteboardCanvas() {
+    if (!whiteboardCanvas || !wbCtx) return;
+    var ratio = window.devicePixelRatio || 1;
+    var cssWidth = whiteboardCanvas.clientWidth;
+    var cssHeight = whiteboardCanvas.clientHeight;
+    if (cssWidth === 0 || cssHeight === 0) return; // panel is hidden; size it once it's shown instead
+
+    // Preserve whatever was already drawn when resizing (e.g. on orientation change).
+    var prev = (whiteboardCanvas.width > 0 && whiteboardCanvas.height > 0)
+        ? wbCtx.getImageData(0, 0, whiteboardCanvas.width, whiteboardCanvas.height)
+        : null;
+
+    whiteboardCanvas.width = cssWidth * ratio;
+    whiteboardCanvas.height = cssHeight * ratio;
+    wbCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    wbCtx.lineCap = "round";
+    wbCtx.lineJoin = "round";
+    wbCtx.lineWidth = 3;
+
+    if (prev) {
+        // Draw the previous bitmap back in at its old pixel size (best-effort on resize).
+        var tmp = document.createElement("canvas");
+        tmp.width = prev.width; tmp.height = prev.height;
+        tmp.getContext("2d").putImageData(prev, 0, 0);
+        wbCtx.drawImage(tmp, 0, 0, prev.width / ratio, prev.height / ratio);
+    }
+    wbSized = true;
+}
+
+function clearWhiteboard() {
+    if (!wbCtx || !whiteboardCanvas) return;
+    wbCtx.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+}
+
+function wbPointerPos(e) {
+    var rect = whiteboardCanvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+if (whiteboardCanvas && wbCtx) {
+    whiteboardCanvas.addEventListener("pointerdown", function(e) {
+        wbDrawing = true;
+        if (whiteboardCanvas.setPointerCapture) {
+            try { whiteboardCanvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        }
+        var p = wbPointerPos(e);
+        wbLastX = p.x; wbLastY = p.y;
+        // Draw a dot for a single tap/click, not just drags.
+        wbCtx.beginPath();
+        wbCtx.fillStyle = wbErasing ? "#ffffff" : wbColor;
+        wbCtx.arc(p.x, p.y, (wbErasing ? 10 : 1.5), 0, Math.PI * 2);
+        wbCtx.fill();
+    });
+    whiteboardCanvas.addEventListener("pointermove", function(e) {
+        if (!wbDrawing) return;
+        var p = wbPointerPos(e);
+        wbCtx.strokeStyle = wbErasing ? "#ffffff" : wbColor;
+        wbCtx.lineWidth = wbErasing ? 20 : 3;
+        wbCtx.beginPath();
+        wbCtx.moveTo(wbLastX, wbLastY);
+        wbCtx.lineTo(p.x, p.y);
+        wbCtx.stroke();
+        wbLastX = p.x; wbLastY = p.y;
+    });
+    function wbStopDrawing(e) {
+        wbDrawing = false;
+        if (whiteboardCanvas.hasPointerCapture && e && e.pointerId !== undefined) {
+            try { whiteboardCanvas.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        }
+    }
+    whiteboardCanvas.addEventListener("pointerup", wbStopDrawing);
+    whiteboardCanvas.addEventListener("pointercancel", wbStopDrawing);
+    whiteboardCanvas.addEventListener("pointerleave", wbStopDrawing);
+}
+
+if (whiteboardToggleBtn && whiteboardPanel) {
+    whiteboardToggleBtn.addEventListener("click", function() {
+        var opening = whiteboardPanel.classList.contains("hidden");
+        whiteboardPanel.classList.toggle("hidden");
+        whiteboardToggleBtn.textContent = opening
+            ? "✏️ Hide Scratch Pad"
+            : "✏️ Open Scratch Pad (for working out problems)";
+        if (opening && !wbSized) sizeWhiteboardCanvas();
+    });
+}
+
+wbColorButtons.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+        wbColor = btn.dataset.color;
+        wbErasing = false;
+        wbColorButtons.forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        if (wbEraserBtn) wbEraserBtn.classList.remove("active");
+    });
+});
+
+if (wbEraserBtn) {
+    wbEraserBtn.addEventListener("click", function() {
+        wbErasing = !wbErasing;
+        wbEraserBtn.classList.toggle("active", wbErasing);
+        if (wbErasing) wbColorButtons.forEach(function(b) { b.classList.remove("active"); });
+    });
+}
+
+if (wbClearBtn) wbClearBtn.addEventListener("click", clearWhiteboard);
+
+window.addEventListener("resize", function() {
+    if (whiteboardPanel && !whiteboardPanel.classList.contains("hidden")) sizeWhiteboardCanvas();
+});
+// -------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded",function(){
     subjectSelect.addEventListener("change",generateQuestion);
