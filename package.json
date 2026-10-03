@@ -1,0 +1,17 @@
+{
+  "name": "quest-academy-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Optional backend for Quest Academy that powers the Unlimited AI Questions feature via the Claude API.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.22.3"
+  }
+}
