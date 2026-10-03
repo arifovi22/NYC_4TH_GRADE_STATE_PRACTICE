@@ -30,6 +30,10 @@ ELA Grade 4 areas:
 
 The official NYS standards should remain the source of truth when expanding the question bank.
 
+## Scratch pad (whiteboard)
+
+There's now a collapsible **"✏️ Open Scratch Pad"** panel kids can use to work out math problems or jot notes on an ELA passage — mouse, touch, and stylus all work (built on Pointer Events). It has four pen colors, an eraser, and a Clear button, and it automatically clears itself each time a new question loads so old scratch work never lingers into the wrong question.
+
 ## No-repeat questions
 
 Both Math and ELA now draw from a "shuffle bag": every question/question-type is shown once, in random order, before anything repeats, and the app also makes sure the question right after a reshuffle is never the same as the one right before it. In practice: you'll see all 49 ELA questions (in a random order) before any ELA question repeats, and all 22 math question templates before any type repeats.
@@ -47,28 +51,3 @@ cp .env.example .env     # then paste your real key from console.anthropic.com i
 npm start
 ```
 Then open `http://localhost:3000` — the checkbox will now call Claude for each new question. If the server isn't running, or the key is missing/invalid, the checkbox automatically un-checks itself and the app quietly falls back to the built-in question bank, so the app always keeps working either way.
-
-### Deploying
-If you deploy this (e.g. Render, Railway, Fly.io, a VPS), run `server.js` as the web process and set `ANTHROPIC_API_KEY` as an environment variable in that platform's dashboard — don't commit `.env` to git (it's already in `.gitignore`).
-
-## Hosting on GitHub Pages
-
-GitHub Pages only serves static files — it cannot run `server.js`. Two options:
-
-**Option A — static only (simplest).** Push just `index.html` and `app.js` to a GitHub repo, enable Pages in the repo's Settings → Pages (Deploy from a branch, root folder). The quiz, scoring, and no-repeat question banks all work exactly as before. The AI checkbox will just quietly fall back to the local question bank for every visitor, since there's no backend to call.
-
-**Option B — static site + separate AI backend.**
-1. Deploy `server.js` to a Node-friendly host (Render, Railway, Fly.io, etc.) with `ANTHROPIC_API_KEY` set as an environment variable there.
-2. In `app.js`, change:
-   ```js
-   var AI_ENDPOINT = "/api/generate-question";
-   ```
-   to your deployed server's full URL:
-   ```js
-   var AI_ENDPOINT = "https://your-server.onrender.com/api/generate-question";
-   ```
-3. Push `index.html` + the updated `app.js` to GitHub Pages as in Option A.
-
-`server.js` already sends CORS headers so it will accept requests from your GitHub Pages domain (open to any origin by default; set an `ALLOWED_ORIGIN` environment variable on that host, e.g. `https://yourusername.github.io`, to restrict it to just your Pages site).
-
-A `.nojekyll` file is included so GitHub Pages serves the files as-is without running them through Jekyll.
