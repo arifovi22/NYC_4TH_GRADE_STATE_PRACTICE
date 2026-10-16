@@ -174,6 +174,34 @@ function generateELA() {
     makeELAQuestion(item.q, item.o, item.a, item.e, item.s, item.cat);
 }
 
+// Science generator: pulls from the science question bank (external JSON or local fallback)
+function generateScience() {
+    var qBank = window.scienceQuestions || (typeof scienceQuestions !== 'undefined' ? scienceQuestions : []);
+    if (!qBank || qBank.length === 0) {
+        console.warn('No science questions available in local bank; falling back to math.');
+        generateMathGrade4();
+        return;
+    }
+    if (typeof window.nextScienceQuestion !== 'function') {
+        window.nextScienceQuestion = makeShuffleBag(Math.max(1, qBank.length));
+    }
+    var item = qBank[window.nextScienceQuestion()];
+    if (!item) { generateMathGrade4(); return; }
+    if (Array.isArray(item.o)) {
+        makeELAQuestion(item.q, item.o, item.a, item.e || '', item.s || 'science', item.cat || 'Science');
+    } else {
+        var ans = Number(item.a);
+        makeMathQuestion(item.q, isNaN(ans) ? item.a : ans, item.e || '', item.s || 'science');
+    }
+}
+
+function generateFromLocalBank(subject, grade) {
+    if (subject === "ela") generateELA();
+    else if (subject === "science") generateScience();
+    else if (grade === "4") generateMathGrade4();
+    else generateLegacyMath(grade);
+}
+
 function generateLegacyMath(grade) {
     var n1,n2,op;
     if(grade==="1"){n1=randInt(1,10);n2=randInt(1,10);op=Math.random()>.5?"+":"-";if(op==="-"&&n1<n2){var t=n1;n1=n2;n2=t;}makeMathQuestion(n1+" "+op+" "+n2+" = ?",op==="+"?n1+n2:n1-n2,"Count for basic addition or subtraction.","Grade 1");}
@@ -204,12 +232,6 @@ function generateQuestion() {
         return;
     }
     generateFromLocalBank(subject, grade);
-}
-
-function generateFromLocalBank(subject, grade) {
-    if (subject === "ela") generateELA();
-    else if (grade === "4") generateMathGrade4();
-    else generateLegacyMath(grade);
 }
 
 function fetchAIQuestion(subject, grade) {
