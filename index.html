@@ -227,5 +227,36 @@
   </div>
 
   <script src="app.js?v=5"></script>
+  <script>
+  (function(){
+    var small = document.getElementById('smallWbToggle');
+    var panel = document.getElementById('whiteboardPanel');
+    var canvas = document.getElementById('whiteboardCanvas');
+    if(!small || !panel || !canvas) return;
+
+    function openSmall(open){
+      if(open){
+        panel.classList.remove('hidden');
+        panel.classList.add('small','visible');
+        panel.setAttribute('aria-hidden','false');
+        small.setAttribute('aria-expanded','true');
+        try{ wbSized = false; if(typeof sizeWhiteboardCanvas==='function') sizeWhiteboardCanvas(); }catch(e){console.warn('sizeWhiteboardCanvas not available yet',e);}        
+      } else {
+        panel.classList.add('hidden'); panel.classList.remove('small','visible');
+        panel.setAttribute('aria-hidden','true'); small.setAttribute('aria-expanded','false');
+      }
+    }
+
+    small.addEventListener('click', function(){
+      var isHidden = panel.classList.contains('hidden') || !panel.classList.contains('visible');
+      openSmall(isHidden);
+    });
+
+    function maybeAuto(){ var subj = (document.getElementById('subjectSelect')||{}).value || 'math'; if(window.innerWidth<=520 && subj==='math') openSmall(true); }
+    window.addEventListener('resize', function(){ if(panel && panel.classList.contains('visible')) { try{ if(typeof sizeWhiteboardCanvas==='function') sizeWhiteboardCanvas(); }catch(e){} } });
+    document.addEventListener('DOMContentLoaded', maybeAuto);
+    if (document.readyState !== 'loading') maybeAuto();
+  })();
+  </script>
 </body>
 </html>
